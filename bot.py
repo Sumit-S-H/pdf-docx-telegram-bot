@@ -71,9 +71,8 @@ def generate_pdf(pages: list[list[str]]) -> io.BytesIO:
             pdf.multi_cell(170, LINE_HEIGHT, line, align="L")
             pdf.ln(3)  # spacing between paragraphs
 
-    # FIX: fpdf 1.7.2 doesn't support BytesIO directly
-    # We need to get the PDF as bytes first
-    pdf_bytes = pdf.output(dest='S')  # 'S' returns as bytes
+    # Get PDF as bytes (fpdf 1.7.2 syntax)
+    pdf_bytes = pdf.output(dest='S')  # 'S' = return as string/bytes
     buffer = io.BytesIO(pdf_bytes)
     buffer.seek(0)
     return buffer
