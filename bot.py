@@ -55,8 +55,9 @@ def normalize_marker(text: str) -> int | None:
             pass
     return None
 
-# ─── PDF GENERATOR ────────────────────────────────────────
 def generate_pdf(pages: list[list[str]]) -> io.BytesIO:
+    from fpdf import FPDF  # fpdf2 uses same import
+    
     pdf = FPDF()
     pdf.set_font("Arial", size=12)
     pdf.set_margins(20, 20, 20)
@@ -69,14 +70,13 @@ def generate_pdf(pages: list[list[str]]) -> io.BytesIO:
                 pdf.ln(LINE_HEIGHT)
                 continue
             pdf.multi_cell(170, LINE_HEIGHT, line, align="L")
-            pdf.ln(3)  # spacing between paragraphs
+            pdf.ln(3)
 
-    # Get PDF as bytes (fpdf 1.7.2 syntax)
-    pdf_bytes = pdf.output(dest='S')  # 'S' = return as string/bytes
-    buffer = io.BytesIO(pdf_bytes)
+    buffer = io.BytesIO()
+    pdf.output(buffer)  # fpdf2 supports BytesIO directly!
     buffer.seek(0)
-    return buffer
-
+    return buffer 
+    
 # ─── DOCX GENERATOR ───────────────────────────────────────
 def generate_docx(pages: list[list[str]]) -> io.BytesIO:
     doc = Document()
