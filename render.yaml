@@ -8,5 +8,4 @@ services:
     envVars:
       - key: BOT_TOKEN
         fromSecret: telegram_bot_token
-        # OR for testing:
-        # value: "your_bot_token_here"
+    pythonVersion: "3.11"  # Add this line
