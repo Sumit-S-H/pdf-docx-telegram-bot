@@ -56,10 +56,13 @@ def generate_pdf(pages: list[list[str]]) -> io.BytesIO:
     for page_lines in pages:
         pdf.add_page()
         for line in page_lines:
-            if not line.strip():
+            # This line removes emojis and special characters that the PDF font doesn't support
+            clean_line = line.encode('latin-1', 'ignore').decode('latin-1')
+            
+            if not clean_line.strip():
                 pdf.ln(LINE_HEIGHT)
                 continue
-            pdf.multi_cell(170, LINE_HEIGHT, line, align="L")
+            pdf.multi_cell(170, LINE_HEIGHT, clean_line, align="L")
             pdf.ln(3)  # spacing between paragraphs
 
     buffer = io.BytesIO()
