@@ -1,8 +1,6 @@
 import logging
 import os
-import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
-
+import sys
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -19,11 +17,22 @@ from docx.shared import Pt, Inches
 from collections import defaultdict
 
 # ────────────────────────────────────────────────
-# Fetch token from Render environment variables
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
+# Environment configuration for Render
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8355430601:AAGU7NKExlQh99si7aFATwEEqdC7GbeYVVM")
+PORT = int(os.getenv("PORT", 10000))  # Render provides PORT, default 10000 for local
 # ────────────────────────────────────────────────
 
-logging.basicConfig(level=logging.INFO)
+# Validate environment setup
+if not BOT_TOKEN or BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
+    logging.error("❌ BOT_TOKEN environment variable not set or using default!")
+    logging.error("   On Render: Set BOT_TOKEN in Environment Variables")
+    logging.error("   Locally: export BOT_TOKEN='your_bot_token_here'")
+    sys.exit(1)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 # States for conversation after /generate
 CHOOSING_FORMAT = 0
@@ -56,13 +65,10 @@ def generate_pdf(pages: list[list[str]]) -> io.BytesIO:
     for page_lines in pages:
         pdf.add_page()
         for line in page_lines:
-            # This line removes emojis and special characters that the PDF font doesn't support
-            clean_line = line.encode('latin-1', 'ignore').decode('latin-1')
-            
-            if not clean_line.strip():
+            if not line.strip():
                 pdf.ln(LINE_HEIGHT)
                 continue
-            pdf.multi_cell(170, LINE_HEIGHT, clean_line, align="L")
+            pdf.multi_cell(170, LINE_HEIGHT, line, align="L")
             pdf.ln(3)  # spacing between paragraphs
 
     buffer = io.BytesIO()
@@ -128,7 +134,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Normal paragraph
         user_current_page[user_id].append(text)
 
-
 async def cmd_generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -143,11 +148,10 @@ async def cmd_generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "Which format do you want?\n\n"
-        "Reply with: **PDF** or  **DOCX**"
+        "Reply with: **PDF**  or  **DOCX**"
     )
 
     return CHOOSING_FORMAT
-
 
 async def handle_format_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -160,9 +164,11 @@ async def handle_format_choice(update: Update, context: ContextTypes.DEFAULT_TYP
             if choice == "pdf":
                 file_buffer = generate_pdf(user_pages[user_id])
                 filename = "document.pdf"
+                mime = "application/pdf"
             else:
                 file_buffer = generate_docx(user_pages[user_id])
                 filename = "document.docx"
+                mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
             await update.message.reply_document(
                 document=file_buffer,
@@ -179,13 +185,11 @@ async def handle_format_choice(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text("Please reply with **PDF** or **DOCX** only.")
         return CHOOSING_FORMAT
 
-
 async def cmd_clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_pages[user_id].clear()
     user_current_page[user_id].clear()
     await update.message.reply_text("🗑️ Everything cleared. Ready for a new document.")
-
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
@@ -206,6 +210,17 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Extra commands:\n"
         "• `/clear`   → delete everything and start a new document\n"
         "• `/start`   → show this help message again\n\n"
+        "Example flow:\n"
+        "You → Hello this is my title\n"
+        "You → First paragraph here...\n"
+        "You → p1\n"
+        "Bot → Page 1 finished. Now on page 2.\n"
+        "You → Second page content\n"
+        "You → Another line\n"
+        "You → /generate\n"
+        "Bot → Which format? Reply with PDF or DOCX\n"
+        "You → pdf\n"
+        "→ You get your PDF file!\n\n"
         "Ready when you are — start sending text! ✍️"
     )
 
@@ -215,39 +230,46 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
 
-# ─── DUMMY WEB SERVER FOR RENDER ──────────────────────────
-class DummyHandler(BaseHTTPRequestHandler):
+# ─── RENDER DEPLOYMENT HEALTH CHECK ───────────────────────
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
+
+class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
-        self.wfile.write(b"Bot is running successfully!")
+        self.wfile.write(b'Bot is running!')
     
     def log_message(self, format, *args):
-        # Suppress noisy HTTP logs in your terminal
-        pass
-
-def run_dummy_server():
-    # Render automatically sets the PORT environment variable
-    port = int(os.environ.get("PORT", 8080))
-    server = HTTPServer(('0.0.0.0', port), DummyHandler)
-    print(f"Dummy server listening on port {port} for Render health checks...")
-    server.serve_forever()
-# ──────────────────────────────────────────────────────────
-
-def main():
-    # Start the dummy server in a background thread so it doesn't block the bot
-    threading.Thread(target=run_dummy_server, daemon=True).start()
-
-    if not BOT_TOKEN:
-        print("ERROR: BOT_TOKEN is not set in environment variables!")
+        # Suppress health check logs
         return
 
+def run_health_server():
+    """Run a simple HTTP server for Render health checks"""
+    server = HTTPServer(('0.0.0.0', PORT), HealthCheckHandler)
+    logging.info(f"🏥 Health check server running on port {PORT}")
+    server.serve_forever()
+
+# ─── MAIN APPLICATION ─────────────────────────────────────
+def main():
+    # Start health check server in background thread
+    health_thread = threading.Thread(target=run_health_server, daemon=True)
+    health_thread.start()
+    
+    logging.info(f"🤖 Starting Telegram bot...")
+    logging.info(f"🔌 Will listen on Telegram API (polling mode)")
+    logging.info(f"🏥 Health check endpoint: http://0.0.0.0:{PORT}/")
+
+    # Create application
     app = Application.builder().token(BOT_TOKEN).build()
 
+    # Conversation handler for format selection
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("generate", cmd_generate),
-                      CommandHandler("gerneater", cmd_generate)],
+        entry_points=[
+            CommandHandler("generate", cmd_generate),
+            CommandHandler("gerneater", cmd_generate)
+        ],
         states={
             CHOOSING_FORMAT: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_format_choice)
@@ -256,13 +278,21 @@ def main():
         fallbacks=[],
     )
 
+    # Register handlers
     app.add_handler(conv_handler)
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("clear", cmd_clear))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
-    print("Telegram Bot polling started...")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    # Start bot with polling
+    try:
+        app.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True  # Don't process old updates on restart
+        )
+    except Exception as e:
+        logging.error(f"Bot crashed: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
