@@ -1,0 +1,3 @@
+python-telegram-bot==21.5          # or whatever version you're using
+fpdf2==2.5.0
+python-docx==1.1.2
