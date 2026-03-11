@@ -1,6 +1,9 @@
 import logging
 import os
 import sys
+import io
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -11,7 +14,6 @@ from telegram.ext import (
     ConversationHandler
 )
 from fpdf import FPDF
-import io
 from docx import Document
 from docx.shared import Pt, Inches
 from collections import defaultdict
