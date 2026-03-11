@@ -230,18 +230,21 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 # ─── RENDER DEPLOYMENT HEALTH CHECK ───────────────────────
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import threading
-
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
         self.wfile.write(b'Bot is running!')
+
+    # ADD THIS: Handles the "HEAD" request from UptimeRobot
+    def do_HEAD(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
     
     def log_message(self, format, *args):
-        # Suppress health check logs
+        # Keeps your logs clean by not showing every single ping
         return
 
 def run_health_server():
