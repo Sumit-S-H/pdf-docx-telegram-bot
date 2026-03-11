@@ -6,7 +6,8 @@ A Telegram bot that converts text into PDF documents.
 
 Live Bot: https://t.me/pdf_dox_2bot
 
-Fork this repository and click the button above to deploy your own version on Render. Star the repo if you like it.
+Fork this repository and click the button above to deploy your own version on Render. 
+Star the repo if you like it.
 
 ---
 
