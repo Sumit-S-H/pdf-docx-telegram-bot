@@ -1,10 +1,8 @@
 # pdf-docx-telegram-bot
 
-[![GitHub stars](https://img.shields.io/github/stars/Sumit-S-H/pdf-docx-telegram-bot.svg?style=social)]
-
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Sumit-S-H/pdf-docx-telegram-bot)
 
-A Telegram bot that converts text into PDF documents.
+A Telegram bot that converts text into PDF and DOCX.
 
 Live Bot: https://t.me/pdf_dox_2bot
 
