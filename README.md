@@ -9,9 +9,3 @@ A Telegram bot that converts text into PDF documents.
 Live Bot: https://t.me/pdf_dox_2bot
 
 Star the repo if you like it, or fork it to make your own modifications.
-
-## Setup and Modification
-
-1. Clone the repository:
-   ```bash
-   git clone [https://github.com/Sumit-S-H/pdf-docx-telegram-bot.git](https://github.com/Sumit-S-H/pdf-docx-telegram-bot.git)
